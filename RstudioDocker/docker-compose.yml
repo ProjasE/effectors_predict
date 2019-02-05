@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+  r-studio:
+    image: rstudio_ss
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8787:8787
+    volumes:
+      - ./Effectors:/home/Effectors
+    environment:
+      - ROOT=TRUE 
