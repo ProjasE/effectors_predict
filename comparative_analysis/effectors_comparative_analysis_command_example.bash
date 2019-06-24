@@ -1,0 +1,1 @@
+python effectors_comparative_analysis.py -p ~/effectors/playground/secretome_all_sensitive.fa -o ~/effectors/playground/09_final_groups/Phytophthora_OrthologousGroups.txt -s ~/effectors/playground/09_final_groups/Phytophthora_Singletons.txt -c species_to_clade.yaml --out_prefix secretome --color purple
