@@ -4,6 +4,8 @@ import os
 from contextlib import contextmanager
 from collections import defaultdict
 import csv
+import argparse
+import yaml
 
 import pandas as pd
 from Bio import SeqIO
@@ -13,7 +15,7 @@ from Bio.Alphabet import ProteinAlphabet
 from Bio.Blast.Applications import NcbiblastpCommandline
 from io import StringIO
 from upsetplot import from_memberships, plot
-from matplotlib import pyplot
+from matplotlib import pyplot as plt
 
 
 class SecretomesLoader(object):
@@ -231,6 +233,7 @@ class OrthologsStructure(object):
                  show_counts=True,
                  facecolor=color,
                  element_size=100)
+        return p
 
 
     def get_species_intersections_protIds(self):
@@ -262,7 +265,7 @@ class OrthologsStructure(object):
             clades_protIds_dict[cg] = list(set(p_ids))
 
         return clades_protIds_dict
-                
+                 
 
 
 
@@ -273,28 +276,76 @@ def main():
         for key, val in dict.items():
             w.writerow([key, val])
 
-    secretome_filepath = 'CRN_all.fa'
-    orthologs_filepath = "09_final_groups/Phytophthora_OrthologousGroups.txt"
-    singletons_filepath = "09_final_groups/Phytophthora_Singletons.txt"
+    parser = argparse.ArgumentParser(
+        description='Comparative analysis based on Orthologs.')
+    parser.add_argument('-p',
+                        '--proteins_set_filepath',
+                        action="store",
+                        dest='proteins_set_filepath',
+                        required=True,
+                        type=str,
+                        help='file with a set of proteins of special interest from the different species to be compared')
+    parser.add_argument('-o',
+                        '--orthologs_filepath',
+                        action="store",
+                        dest='orthologs_filepath',
+                        required=True,
+                        type=str,
+                        help='orthologs information file')
+    parser.add_argument('-s',
+                        '--singletons_filepath',
+                        action="store",
+                        dest='singletons_filepath',
+                        required=True,
+                        type=str,
+                        help='singletons information file')
+    parser.add_argument('-c',
+                        '--species2clade',
+                        action="store",
+                        dest="species2clade",
+                        required=True,
+                        type=str,
+                        help='YAML file mapping species to its respective clade.')
+    parser.add_argument('--out_prefix',
+                        action="store",
+                        dest='out_prefix',
+                        required=True,
+                        type=str,
+                        help='file prefix to use for output files.')
+    parser.add_argument('--color',
+                        action="store",
+                        dest="color",
+                        type=str,
+                        default='purple',
+                        help='color to use in UpSet plots.')
 
-    sl = SecretomesLoader(secretome_filepath)
 
+    args = parser.parse_args()
 
-    species2clade = {'P8084_finalAssembly': '1c',
-                'P_cactorum_10300': '1a',
-                'P_infestans_RefSeq': '1c',
-                'P_ramorum_Pr102': '8c',
-                'P_palmivora_LILI_trCDS': '4', 
-                'P_parasitica_INRA310': '1c',
-                'P_sojae_V3': '7b'}
+    with open(args.species2clade) as f:
+        try:
+            species2clade = yaml.safe_load(f)
+        except yaml.YAMLError as err:
+            print(err)
 
-    ortho_s = OrthologsStructure(orthologs_filepath, singletons_filepath, sl.dict, species2clade)
+    sl = SecretomesLoader(args.proteins_set_filepath)
+
+    ortho_s = OrthologsStructure(args.orthologs_filepath, 
+                                args.singletons_filepath,
+                                sl.dict, 
+                                species2clade)
+
+    p_s = ortho_s.plot_species_intersections(args.color)
+    plt.savefig(args.out_prefix + '_species.png')
+    p_c = ortho_s.plot_clades_intersections(args.color)
+    plt.savefig(args.out_prefix + '_clades.png')
+    
 
     clade_dict = ortho_s.get_clade_intersections_protIds()
     species_dict = ortho_s.get_species_intersections_protIds()
 
-    write_dict(clade_dict, 'CRN_clade_dict')
-    write_dict(species_dict, 'CRN_species_dict')
+    write_dict(clade_dict, args.out_prefix + '_clade_dict')
+    write_dict(species_dict, args.out_prefix + '_species_dict')
 
 if __name__ == "__main__":
     main()
