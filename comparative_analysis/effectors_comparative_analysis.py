@@ -16,6 +16,7 @@ from Bio.Blast.Applications import NcbiblastpCommandline
 from io import StringIO
 from upsetplot import from_memberships, plot
 from matplotlib import pyplot as plt
+from matplotlib_venn import venn3, venn2
 
 
 class SecretomesLoader(object):
@@ -194,7 +195,7 @@ class OrthologsStructure(object):
                 except ValueError:
                     pass
 
-        return (species_groups, species_groups)
+        return (species_groups, species_orthogroups)
 
     def plot_species_intersections(self, color):
         memberships = []
@@ -215,6 +216,40 @@ class OrthologsStructure(object):
                  element_size=100)
 
         return p
+
+    def plot_venn_diagram_species(self):
+        species_groups, _ = self.orthogroups_sets()
+
+        combinations_counts = defaultdict(int)
+        for combination in species_groups:
+            combinations_counts[combination] = \
+                len(set(species_groups[combination]))
+
+        set_names = []
+        for combination in combinations_counts:
+            if len(combination) == 1:
+                set_names.append(combination[0])
+
+        if len(set_names) == 3:
+            return venn3(subsets=(combinations_counts[(set_names[0],)],
+                               combinations_counts[(set_names[1],)],
+                               combinations_counts[(set_names[0], set_names[1])],
+                               combinations_counts[(set_names[2],)],
+                               combinations_counts[(set_names[0], set_names[2])],
+                               combinations_counts[(set_names[1], set_names[2])],
+                               combinations_counts[(set_names[0], set_names[1], set_names[2])],
+                               ),
+                      set_labels=(set_names[0], set_names[1], set_names[2]))
+
+        elif len(set_names) == 2:
+            return venn2(subsets=(combinations_counts[(set_names[0],)],
+                               combinations_counts[(set_names[1],)],
+                               combinations_counts[(set_names[0], set_names[1])]),
+                       set_labels=(set_names[0], set_names[1]))
+        else:
+            return None
+
+
 
     def plot_clades_intersections(self, color):
         memberships = []
@@ -337,9 +372,12 @@ def main():
 
     p_s = ortho_s.plot_species_intersections(args.color)
     plt.savefig(args.out_prefix + '_species.png')
+    plt.clf()
     p_c = ortho_s.plot_clades_intersections(args.color)
     plt.savefig(args.out_prefix + '_clades.png')
-    
+    plt.clf()
+
+
 
     clade_dict = ortho_s.get_clade_intersections_protIds()
     species_dict = ortho_s.get_species_intersections_protIds()
@@ -347,5 +385,13 @@ def main():
     write_dict(clade_dict, args.out_prefix + '_clade_dict')
     write_dict(species_dict, args.out_prefix + '_species_dict')
 
+    v = ortho_s.plot_venn_diagram_species()
+    # if v is not None:
+    plt.savefig(args.out_prefix + '_venn.png')
+    plt.clf()
+
+
+
 if __name__ == "__main__":
     main()
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
