@@ -15,7 +15,7 @@ from Bio.Alphabet import ProteinAlphabet
 from Bio.Blast.Applications import NcbiblastpCommandline
 from io import StringIO
 from upsetplot import from_memberships, plot
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
 from matplotlib_venn import venn3, venn2
 
 
@@ -197,7 +197,7 @@ class OrthologsStructure(object):
 
         return (species_groups, species_orthogroups)
 
-    def plot_species_intersections(self, color):
+    def plot_species_intersections(self, color, ignore_counts=0, orientation='horizontal'):
         memberships = []
         data = []
 
@@ -209,11 +209,25 @@ class OrthologsStructure(object):
 
         structured_data = from_memberships(memberships, data=data)
 
+        species_dict = {'P8084_finalAssembly': 'P.betacei',
+                        'P_cactorum_10300': 'P.cactorum',
+                        'P_infestans_RefSeq': 'P. infestans',
+                        'P_palmivora_LILI_trCDS': 'P.palmivora',
+                        'P_parasitica_INRA310': 'P.parasitica',
+                        'P_ramorum_Pr102': 'P.ramorum',
+                        'P_sojae_V3': 'P.sojae'}
+
+
+        new_names = [species_dict[old_name] for old_name in structured_data.index.names]
+        structured_data.index.names = new_names
+
+        structured_data = structured_data[structured_data > ignore_counts].copy()
+
         p = plot(structured_data,
-                 orientation='vertical',
+                 orientation=orientation,
                  show_counts=True,
                  facecolor=color,
-                 element_size=100)
+                 element_size=40)
 
         return p
 
@@ -353,7 +367,19 @@ def main():
                         type=str,
                         default='purple',
                         help='color to use in UpSet plots.')
-
+    parser.add_argument('--small_counts',
+                        action="store",
+                        dest="small_counts",
+                        type=int,
+                        default=0,
+                        help='ignore counts equal or smaller to this parameter'
+                             'when rendering UpSet plots.')
+    parser.add_argument('--orientation',
+                        action="store",
+                        dest="orientation",
+                        type=str,
+                        default='vertical',
+                        help='Orientation of UpSet plots.')
 
     args = parser.parse_args()
 
@@ -370,11 +396,14 @@ def main():
                                 sl.dict, 
                                 species2clade)
 
-    p_s = ortho_s.plot_species_intersections(args.color)
-    plt.savefig(args.out_prefix + '_species.png')
+
+    p_s = ortho_s.plot_species_intersections(args.color,
+                                             args.small_counts,
+                                             args.orientation)
+    plt.savefig(args.out_prefix + '_species.png', dpi=300)
     plt.clf()
     p_c = ortho_s.plot_clades_intersections(args.color)
-    plt.savefig(args.out_prefix + '_clades.png')
+    plt.savefig(args.out_prefix + '_clades.png', dpi=300)
     plt.clf()
 
 
