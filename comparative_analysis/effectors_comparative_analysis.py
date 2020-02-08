@@ -222,7 +222,6 @@ class OrthologsStructure(object):
         structured_data.index.names = new_names
 
         structured_data = structured_data[structured_data > ignore_counts].copy()
-
         p = plot(structured_data,
                  orientation=orientation,
                  show_counts=True,
@@ -397,12 +396,25 @@ def main():
                                 species2clade)
 
 
-    p_s = ortho_s.plot_species_intersections(args.color,
+    try:
+        p_s = ortho_s.plot_species_intersections(args.color,
                                              args.small_counts,
                                              args.orientation)
+    except AttributeError as e:
+        if re.match(r'.+levels.+', str(e)):
+            print('...Skipping plotting species UpSet plot. '
+                  'Less than 2 species with more counts than the specify in small_counts argument.')
+        else:
+            raise(e)
     plt.savefig(args.out_prefix + '_species.png', dpi=300)
     plt.clf()
-    p_c = ortho_s.plot_clades_intersections(args.color)
+    try:
+        p_c = ortho_s.plot_clades_intersections(args.color)
+    except AttributeError as e:
+        if re.match(r'.+levels.+', str(e)):
+            print('...Skipping plotting clades UpSet plot. Less than 2 clades.')
+        else:
+            raise(e)
     plt.savefig(args.out_prefix + '_clades.png', dpi=300)
     plt.clf()
 
